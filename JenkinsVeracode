@@ -12,11 +12,6 @@ pipeline {
 		maven 'Maven'
 	}
 
-	environment {
-		VERACODE_APPLICATION_NAME = 'ServiceNow DevOps App#1' //Ensure you update the correct Application name
-    SECURITY_TOOL_ID = ''  //Ensure you update the correct Veracode tool sysId
-	} 
-
 	stages {
 		stage('Build') {
 			steps {
@@ -57,7 +52,7 @@ pipeline {
 		stage('Veracode Security Scan') {
 			steps {
 				sleep(10);
-				snDevOpsSecurityResult securityResultAttributes: '{"scanner":"Veracode", "applicationName":"${env.VERACODE_APPLICATION_NAME}", "securityToolId":"${env.SECURITY_TOOL_ID}"}'
+				snDevOpsSecurityResult securityResultAttributes: '{"scanner":"Veracode", "applicationName":"ServiceNow DevOps App#1", "securityToolId":"e42c0299c3e7b150914b9e0f050131f6"}'
 				// scanner: Scanning tool and is required e.g. Veracode.
 				// applicationName: Name of your Veracode application and is required. This attribute is applicable only for Veracode.
 				// buildVersion: Veracode Scan name / build version and is optional. This attribute is applicable only for Veracode.
