@@ -1,0 +1,101 @@
+def packageName = "app-devops-package-cicd.war"
+def artifactname = "app-devops-artifact-cicd.jar"
+def version = "1.${BUILD_NUMBER}"
+def semanticVersion = "1.${BUILD_NUMBER}.0"
+def repoName = "devsystem2019/ServiceNow-DevOps-Change-Sample" //Ensure after forking update the repoName accrodingly.
+def changeRequestNumber = null
+
+pipeline {
+	agent any
+	
+	tools {
+		maven 'Maven'
+	}
+
+	environment {
+		VERACODE_APPLICATION_NAME = 'ServiceNow DevOps App#1' //Ensure you update the correct Application name
+    SECURITY_TOOL_ID = ''  //Ensure you update the correct Veracode tool sysId
+	} 
+
+	stages {
+		stage('Build') {
+			steps {
+				sh 'mvn -B -DskipTests clean compile'
+			}
+		}
+
+		stage('Test') {
+			steps {
+			  	sh 'mvn test'
+				sleep(5);
+			}
+			post {
+				always {
+					junit "**/target/surefire-reports/*.xml"
+				}
+			}
+		}
+
+		stage('Register Artifact') {
+			steps {
+				snDevOpsArtifact(artifactsPayload: """
+				{
+				"artifacts":
+				[
+				    {
+				        "name": "${artifactname}",
+				        "version": "${version}",
+				        "semanticVersion": "${semanticVersion}",
+				        "repositoryName": "${repoName}"
+				    }
+				],
+				"branchName": "main"
+				}""")
+			}     
+		}
+
+		stage('Veracode Security Scan') {
+			steps {
+				sleep(10);
+				snDevOpsSecurityResult securityResultAttributes: '{"scanner":"Veracode", "applicationName":"${env.VERACODE_APPLICATION_NAME}", "securityToolId":"${env.SECURITY_TOOL_ID}"}'
+				// scanner: Scanning tool and is required e.g. Veracode.
+				// applicationName: Name of your Veracode application and is required. This attribute is applicable only for Veracode.
+				// buildVersion: Veracode Scan name / build version and is optional. This attribute is applicable only for Veracode.
+				// securityToolId: Security tool onboarded in ServiceNow (sys_id of the onboarded security tool) and is optional.
+			}
+		}
+
+		stage('Register Package') {
+				steps {
+					snDevOpsPackage(
+					name: "${packageName}",
+					artifactsPayload: """
+					{
+					    "artifacts":
+					    [
+						{
+						    "name": "${artifactname}",
+						    "version": "${version}",
+						    "semanticVersion": "${semanticVersion}",
+						    "repositoryName": "${repoName}"
+						}
+					    ],
+					    "branchName": "main"
+					}""")
+				}
+		}
+		  
+		stage('Change') {
+
+			steps {
+			    snDevOpsChange(changeRequestDetails: '''
+			    {
+				"autoCloseChange": true,
+				"attributes": {
+					"chg_model": {"name":"devops"}
+				}
+			    }''')
+			}
+		}
+	}
+}
